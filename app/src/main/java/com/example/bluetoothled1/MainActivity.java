@@ -1,5 +1,6 @@
 package com.example.bluetoothled1;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -8,15 +9,22 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.SystemClock;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -25,10 +33,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 public class MainActivity extends AppCompatActivity {
+    private static final Integer RECORD_AUDIO_REQUEST_CODE = 10;
     // GUI Components
     private TextView mBluetoothStatus;
     private TextView mReadBuffer;
@@ -38,10 +50,15 @@ public class MainActivity extends AppCompatActivity {
     private Button mDiscoverBtn;
     private Button ledOnBtn;
     private Button ledOffBtn;
+    private Button voiceCmdBtn;
+    private SpeechRecognizer speechRecognizer;
+    private Intent speechIntent;
     private BluetoothAdapter mBTAdapter;
     private Set<BluetoothDevice> mPairedDevices;
     private ArrayAdapter<String> mBTArrayAdapter;
     private ListView mDevicesListView;
+
+    private int permissionAudio;
 
     private Handler mHandler; // Our main handler that will receive callback notifications
     private ConnectedThread mConnectedThread; // bluetooth background worker thread to send and receive data
@@ -49,14 +66,13 @@ public class MainActivity extends AppCompatActivity {
 
     private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"); // "random" unique identifier
 
-
     // #defines for identifying shared types between calling functions
     private final static int REQUEST_ENABLE_BT = 1; // used to identify adding bluetooth names
     private final static int MESSAGE_READ = 2; // used in bluetooth handler to identify message update
     private final static int CONNECTING_STATUS = 3; // used in bluetooth handler to identify message status
 
 
-    @SuppressLint("HandlerLeak")
+    @SuppressLint({"HandlerLeak", "ClickableViewAccessibility"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -70,6 +86,7 @@ public class MainActivity extends AppCompatActivity {
         mListPairedDevicesBtn = (Button)findViewById(R.id.PairedBtn);
         ledOnBtn = (Button)findViewById(R.id.btnLedOn);
         ledOffBtn = (Button)findViewById(R.id.btnLedOff);
+        voiceCmdBtn = (Button)findViewById(R.id.tellCommandBtn);
 
         mBTArrayAdapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1);
         mBTAdapter = BluetoothAdapter.getDefaultAdapter(); // get a handle on the bluetooth radio
@@ -78,8 +95,81 @@ public class MainActivity extends AppCompatActivity {
         mDevicesListView.setAdapter(mBTArrayAdapter); // assign model to view
         mDevicesListView.setOnItemClickListener(mDeviceClickListener);
 
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+        speechIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
 
+        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
 
+        speechRecognizer.setRecognitionListener(new RecognitionListener() {
+            @Override
+            public void onReadyForSpeech(Bundle params) {
+
+            }
+
+            @Override
+            public void onBeginningOfSpeech() {
+
+            }
+
+            @Override
+            public void onRmsChanged(float rmsdB) {
+
+            }
+
+            @Override
+            public void onBufferReceived(byte[] buffer) {
+
+            }
+
+            @Override
+            public void onEndOfSpeech() {
+
+            }
+
+            @Override
+            public void onError(int error) {
+
+            }
+
+            @Override
+            public void onResults(Bundle results) {
+                ArrayList<String> result = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+
+                // if it recognized something, get the first result that is the best match
+                // and display it
+                if(!result.isEmpty()) {
+
+                    // check if user said a command
+                    String com = result.get(0).toLowerCase();
+                    Toast.makeText(getApplicationContext(), com, Toast.LENGTH_LONG).show();
+                    switch (com) {
+                        case "light on":
+                            Log.d("TAFA", com);
+                            ledOnBtn.callOnClick();
+//                            if(mConnectedThread != null) //First check to make sure thread created
+//                                mConnectedThread.write("1");
+                            break;
+                        case "light off":
+                            ledOffBtn.callOnClick();
+                            Log.d("VASFKSJKHFVASHJFSAJUGFS", com);
+//                            if(mConnectedThread != null) //First check to make sure thread created
+//                                mConnectedThread.write("0");
+                            break;
+                    }
+                }
+            }
+
+            @Override
+            public void onPartialResults(Bundle partialResults) {
+
+            }
+
+            @Override
+            public void onEvent(int eventType, Bundle params) {
+
+            }
+        });
 
         mHandler = new Handler(){
             public void handleMessage(android.os.Message msg){
@@ -127,6 +217,26 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+            voiceCmdBtn.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    if (permissionAudio != PackageManager.PERMISSION_GRANTED) {
+                        askForPermission(Manifest.permission.RECORD_AUDIO, RECORD_AUDIO_REQUEST_CODE);
+                    } else {
+                        switch (event.getAction()) {
+                            case MotionEvent.ACTION_DOWN:
+                                Toast.makeText(getApplicationContext(), "LISTENING", Toast.LENGTH_SHORT);
+                                speechRecognizer.startListening(speechIntent);
+                                break;
+                            case MotionEvent.ACTION_UP:
+                                speechRecognizer.stopListening();
+                                break;
+                        }
+                    }
+                    return false;
+                }
+            });
+
             mScanBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -157,6 +267,24 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void askForPermission(String permission, Integer requestCode) {
+        if (ContextCompat.checkSelfPermission(MainActivity.this, permission)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            // ask for permission
+            if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, permission)) {
+
+                // Ask the permission again if denied before
+                ActivityCompat.requestPermissions(MainActivity.this, new String[]{permission}, requestCode);
+
+            } else {
+                ActivityCompat.requestPermissions(MainActivity.this, new String[]{permission}, requestCode);
+            }
+            return;
+        }
+    }
+
+
     private void bluetoothOn(View view){
         if (!mBTAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
@@ -168,6 +296,13 @@ public class MainActivity extends AppCompatActivity {
         else{
             Toast.makeText(getApplicationContext(),"Bluetooth is already on", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    @Override
+    public void onContentChanged() {
+        super.onContentChanged();
+        permissionAudio = ContextCompat.checkSelfPermission(this,
+                Manifest.permission.RECORD_AUDIO);
     }
 
     // Enter here after user selects "yes" or "no" to enabling radio

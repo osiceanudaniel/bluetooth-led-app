@@ -39,6 +39,13 @@
             android:text="LED OFF"
             android:textStyle="bold" />
 
+        <Button
+            android:id="@+id/tellCommandBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Speak"
+            android:textStyle="bold"/>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
