@@ -15,8 +15,8 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <CheckBox
-            android:id="@+id/checkboxLED1"
+        <Button
+            android:id="@+id/btnLedOn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignStart="@+id/bluetoothStatus"
@@ -24,10 +24,27 @@
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="10dp"
             android:checked="false"
-            android:scaleX="1.7"
-            android:scaleY="1.7"
-            android:text="Toggle LED"
+            android:text="LED ON"
             android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnLedOff"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignStart="@+id/bluetoothStatus"
+            android:layout_alignLeft="@+id/bluetoothStatus"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="10dp"
+            android:checked="false"
+            android:text="LED OFF"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/tellCommandBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Speak"
+            android:textStyle="bold"/>
 
         <LinearLayout
             android:layout_width="match_parent"
